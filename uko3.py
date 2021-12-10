@@ -1,7 +1,5 @@
-#Instalována knihovna pyproj pro práci se souřadnicovými systémy
-
-from pyproj import Transformer
-import json                 # v praxi 4 fce: load, loads, dump, dumps
+from pyproj import Transformer      #Knihovna pyproj pro práci se souřadnicovými systémy
+import json                         # v praxi 4 fce: load, loads, dump, dumps
 import math
 
 def prevod_wgs2jtsk(x, y):
@@ -15,33 +13,43 @@ def vzdalenost_bodu(x1,y1,x2,y2):
     vzd = math.sqrt(delta_x**2 + delta_y**2)
     return(vzd)
 
+with open("adresy.geojson", encoding="utf-8") as adresy_f:
+    adresy_gj = json.load(adresy_f)
 
+with open("kontejnery.geojson", encoding="utf-8") as kontejnery_f:
+    kontejnery_gj = json.load(kontejnery_f)
 
-with open("adresy.geojson", encoding="utf-8") as adresy:
-    adresy_gj = json.load(adresy)
+data_adresy = adresy_gj['features']
+data_kontejnery = kontejnery_gj['features']
 
-with open("kontejnery.geojson", encoding="utf-8") as kontejnery:
-    kontejnery_gj = json.load(kontejnery)
+data_volne_kontejnery = []
+for i in range (len(data_kontejnery)):
+    data_kontejnery_tridici = data_kontejnery[i]
+    if data_kontejnery_tridici["properties"]["PRISTUP"] == "volně":
+        data_volne_kontejnery.append(data_kontejnery_tridici)
+print(data_volne_kontejnery)
+
+pocet_adres =       len(data_adresy)
+pocet_kontejneru =  len(data_volne_kontejnery)
 
 seznam_minimalnich = []
-for i in range(len(adresy_gj['features'])):
-    data_adresy = adresy_gj['features'][i]
-    nove_sour = prevod_wgs2jtsk(*data_adresy["geometry"]["coordinates"])
-    data_adresy["geometry"]["coordinates"] = nove_sour
+soucet_minimalnich = 0
+for i in range(pocet_adres):
+    adresa = data_adresy[i]
+    nove_sour = prevod_wgs2jtsk(*adresa["geometry"]["coordinates"])
+    adresa["geometry"]["coordinates"] = nove_sour
     vzd = 0
-    o = 0
     minimalni = 0
-    pocet_kontejneru = len(kontejnery_gj['features'])
     for u in range(pocet_kontejneru):
-        o += 1
-        data_kontejnery = kontejnery_gj['features'][u]
-        if data_kontejnery["properties"]["CITYDISTRICT"] == "Praha 2":
-            vzd = vzdalenost_bodu(*data_adresy["geometry"]["coordinates"], *data_kontejnery["geometry"]["coordinates"])
-            if u == 0 or vzd < minimalni:
-                minimalni = vzd
+        kontejner = data_volne_kontejnery[u]
+        vzd = vzdalenost_bodu(*adresa["geometry"]["coordinates"], *kontejner["geometry"]["coordinates"])
+        if u == 0 or vzd < minimalni:
+            minimalni = vzd
     seznam_minimalnich.append(minimalni)
+    soucet_minimalnich += minimalni
 
-print(seznam_minimalnich)
+print(f"Průměrná vzdálenost ke kontejneru je: {round(soucet_minimalnich/pocet_adres)} m.")
+
 print(len(seznam_minimalnich))
 print(len(adresy_gj['features']))
     
