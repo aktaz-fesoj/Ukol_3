@@ -19,6 +19,8 @@ with open("kontejnery.geojson", encoding="utf-8") as kontejnery_f:
     kontejnery_gj = json.load(kontejnery_f)
 data_adresy = adresy_gj['features']
 data_kontejnery = kontejnery_gj['features']
+print(f"Úspěšně načtěno {len(data_adresy)} adres.")
+print(f"Úspěšně načtěno {len(data_kontejnery)} kontejnerů.")
 data_volne_kontejnery = []
 for i in range (len(data_kontejnery)):
     data_kontejnery_tridici = data_kontejnery[i]
