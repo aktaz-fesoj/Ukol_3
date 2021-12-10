@@ -23,23 +23,47 @@ data_kontejnery = kontejnery_gj['features']
 print(f"Úspěšně načtěno {len(data_adresy)} adresních bodů.")
 print(f"Úspěšně načtěno {len(data_kontejnery)} lokalit kontejnerů na tříděný odpad.")
 data_volne_kontejnery = []
+data_privatni_kontejnery = []
+data_adresy_bez = []
+data_adresy_s = []
+kon = 0
 for i in range (len(data_kontejnery)):
-    data_kontejnery_tridici = data_kontejnery[i]
-    if data_kontejnery_tridici["properties"]["PRISTUP"] == "volně":
-        data_volne_kontejnery.append(data_kontejnery_tridici)
-pocet_adres =       len(data_adresy)
-pocet_kontejneru =  len(data_volne_kontejnery)
+    data_kontejner_i = data_kontejnery[i]
+    if data_kontejner_i["properties"]["PRISTUP"] == "volně":
+        data_volne_kontejnery.append(data_kontejner_i)
+    elif data_kontejner_i["properties"]["PRISTUP"] == "obyvatelům domu":
+        data_privatni_kontejnery.append(data_kontejner_i)
+        
+for a in range (len(data_adresy)):
+    data_adresa_a = data_adresy[a]
+    shoda = False
+    adresa_dohromady = f"{data_adresa_a['properties']['addr:street']} {data_adresa_a['properties']['addr:housenumber']}"
+    for e in range(len(data_privatni_kontejnery)):
+        data_kontejner_e = data_privatni_kontejnery[e]
+        if data_kontejner_e["properties"]["STATIONNAME"] == adresa_dohromady:
+            data_adresy_s.append(data_adresa_a)
+            shoda = True
+    if shoda == False:
+        data_adresy_bez.append(data_adresa_a)
+
+
+pocet_adres_s = len(data_adresy_s)
+pocet_adres_bez = len(data_adresy_bez)
+pocet_volnych_kontejneru =  len(data_volne_kontejnery)
+pocet_privatnich_kontejneru =  len(data_privatni_kontejnery)
+
+print(pocet_adres_bez, pocet_adres_s, pocet_volnych_kontejneru, pocet_privatnich_kontejneru)
 
 seznam_minimalnich = []
 soucet_minimalnich = 0
 maximalni_z_minimalnich = 0
-for i in range(pocet_adres):
-    adresa = data_adresy[i]
+for i in range(pocet_adres_bez):
+    adresa = data_adresy_bez[i]
     nove_sour = prevod_wgs2jtsk(*adresa["geometry"]["coordinates"])
     adresa["geometry"]["coordinates"] = nove_sour
     vzd = 0
     minimalni = 0
-    for u in range(pocet_kontejneru):
+    for u in range(pocet_volnych_kontejneru):
         kontejner = data_volne_kontejnery[u]
         vzd = vzdalenost_bodu(*adresa["geometry"]["coordinates"], *kontejner["geometry"]["coordinates"])
         if u == 0 or vzd < minimalni:
@@ -55,11 +79,25 @@ for i in range(pocet_adres):
     soucet_minimalnich += minimalni
 
 med = round(statistics.median(seznam_minimalnich))
-print(f"Průměrná vzdálenost ke kontejneru je: {round(soucet_minimalnich/pocet_adres)} m.")
+print(f"Průměrná vzdálenost ke kontejneru je: {round(soucet_minimalnich/pocet_adres_bez)} m.")
 print(f"Medián vzdáleností ke kontejneru je: {med} m.")
 print(f"Největší vzdálenost ke kontejneru je z adresy {maximalni_info['ulice_max']} {maximalni_info['cislo_max']} a to {maximalni_info['hodnota_max']} m.")
 
 print(len(seznam_minimalnich))
 print(len(adresy_gj['features']))
+
+
+
+med = round(statistics.median(seznam_minimalnich))
+print(f"Průměrná vzdálenost ke kontejneru je: {round(soucet_minimalnich/len(data_adresy))} m.")
+print(f"Medián vzdáleností ke kontejneru je: {med} m.")
+print(f"Největší vzdálenost ke kontejneru je z adresy {maximalni_info['ulice_max']} {maximalni_info['cislo_max']} a to {maximalni_info['hodnota_max']} m.")
+
+print(len("minimalni_seznam delka porovnani s poctem adres:"))
+print(len(seznam_minimalnich))
+print(len(adresy_gj['features']))
+print(len("private_seznam delka porovnani s poctem shodnych adres:"))
+print(len(data_privatni_kontejnery))
+print(pocet_private_kontejneru)
 
 #print(json.dumps(joo))      #Převedo do json reprezentace
