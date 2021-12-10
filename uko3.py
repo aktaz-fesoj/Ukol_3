@@ -23,16 +23,28 @@ with open("adresy.geojson", encoding="utf-8") as adresy:
 with open("kontejnery.geojson", encoding="utf-8") as kontejnery:
     kontejnery_gj = json.load(kontejnery)
 
+seznam_minimalnich = []
 for i in range(len(adresy_gj['features'])):
     data_adresy = adresy_gj['features'][i]
     nove_sour = prevod_wgs2jtsk(*data_adresy["geometry"]["coordinates"])
     data_adresy["geometry"]["coordinates"] = nove_sour
-
-    for u in range(len(kontejnery_gj['features'])):
+    vzd = 0
+    o = 0
+    minimalni = 0
+    pocet_kontejneru = len(kontejnery_gj['features'])
+    for u in range(pocet_kontejneru):
+        o += 1
         data_kontejnery = kontejnery_gj['features'][u]
-        vzd = vzdalenost_bodu(*data_adresy["geometry"]["coordinates"], *data_kontejnery["geometry"]["coordinates"])
+        if data_kontejnery["properties"]["CITYDISTRICT"] == "Praha 2":
+            vzd = vzdalenost_bodu(*data_adresy["geometry"]["coordinates"], *data_kontejnery["geometry"]["coordinates"])
+            if u == 0 or vzd < minimalni:
+                minimalni = vzd
+    seznam_minimalnich.append(minimalni)
 
-print(adresy_gj)
+print(seznam_minimalnich)
+print(len(seznam_minimalnich))
+print(len(adresy_gj['features']))
+    
 
 
 #print(json.dumps(joo))      #Převedo do json reprezentace
