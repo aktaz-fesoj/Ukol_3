@@ -15,19 +15,15 @@ def vzdalenost_bodu(x1,y1,x2,y2):
 
 with open("adresy.geojson", encoding="utf-8") as adresy_f:
     adresy_gj = json.load(adresy_f)
-
 with open("kontejnery.geojson", encoding="utf-8") as kontejnery_f:
     kontejnery_gj = json.load(kontejnery_f)
-
 data_adresy = adresy_gj['features']
 data_kontejnery = kontejnery_gj['features']
-
 data_volne_kontejnery = []
 for i in range (len(data_kontejnery)):
     data_kontejnery_tridici = data_kontejnery[i]
     if data_kontejnery_tridici["properties"]["PRISTUP"] == "volně":
         data_volne_kontejnery.append(data_kontejnery_tridici)
-
 pocet_adres =       len(data_adresy)
 pocet_kontejneru =  len(data_volne_kontejnery)
 
@@ -45,9 +41,9 @@ for i in range(pocet_adres):
         vzd = vzdalenost_bodu(*adresa["geometry"]["coordinates"], *kontejner["geometry"]["coordinates"])
         if u == 0 or vzd < minimalni:
             minimalni = vzd
-            if minimalni > maximalni_z_minimalnich:
-                maximalni_z_minimalnich = minimalni
-                maximalni_info = {"ulice_max":adresa["properties"]["addr:street"], "cislo_max":adresa["properties"]["addr:housenumber"], "hodnota_max": round(maximalni_z_minimalnich)}
+    if minimalni > maximalni_z_minimalnich:
+        maximalni_z_minimalnich = minimalni
+        maximalni_info = {"ulice_max":adresa["properties"]["addr:street"], "cislo_max":adresa["properties"]["addr:housenumber"], "hodnota_max": round(maximalni_z_minimalnich)}
     seznam_minimalnich.append(minimalni)
     soucet_minimalnich += minimalni
 
@@ -56,7 +52,5 @@ print(f"Největší vzdálenost ke kontejneru je z adresy {maximalni_info['ulice
 
 print(len(seznam_minimalnich))
 print(len(adresy_gj['features']))
-    
-
 
 #print(json.dumps(joo))      #Převedo do json reprezentace
