@@ -98,6 +98,5 @@ print(len(seznam_minimalnich))
 print(len(adresy_gj['features']))
 print(len("private_seznam delka porovnani s poctem shodnych adres:"))
 print(len(data_privatni_kontejnery))
-print(pocet_private_kontejneru)
 
 #print(json.dumps(joo))      #Převedo do json reprezentace
