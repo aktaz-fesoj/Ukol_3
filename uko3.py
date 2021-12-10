@@ -27,13 +27,13 @@ for i in range (len(data_kontejnery)):
     data_kontejnery_tridici = data_kontejnery[i]
     if data_kontejnery_tridici["properties"]["PRISTUP"] == "volně":
         data_volne_kontejnery.append(data_kontejnery_tridici)
-print(data_volne_kontejnery)
 
 pocet_adres =       len(data_adresy)
 pocet_kontejneru =  len(data_volne_kontejnery)
 
 seznam_minimalnich = []
 soucet_minimalnich = 0
+maximalni_z_minimalnich = 0
 for i in range(pocet_adres):
     adresa = data_adresy[i]
     nove_sour = prevod_wgs2jtsk(*adresa["geometry"]["coordinates"])
@@ -45,10 +45,14 @@ for i in range(pocet_adres):
         vzd = vzdalenost_bodu(*adresa["geometry"]["coordinates"], *kontejner["geometry"]["coordinates"])
         if u == 0 or vzd < minimalni:
             minimalni = vzd
+            if minimalni > maximalni_z_minimalnich:
+                maximalni_z_minimalnich = minimalni
+                maximalni_info = {"ulice_max":adresa["properties"]["addr:street"], "cislo_max":adresa["properties"]["addr:housenumber"], "hodnota_max": round(maximalni_z_minimalnich)}
     seznam_minimalnich.append(minimalni)
     soucet_minimalnich += minimalni
 
 print(f"Průměrná vzdálenost ke kontejneru je: {round(soucet_minimalnich/pocet_adres)} m.")
+print(f"Největší vzdálenost ke kontejneru je z adresy {maximalni_info['ulice_max']} {maximalni_info['cislo_max']} a to {maximalni_info['hodnota_max']} m.")
 
 print(len(seznam_minimalnich))
 print(len(adresy_gj['features']))
