@@ -1,6 +1,7 @@
 from pyproj import Transformer      #Knihovna pyproj pro práci se souřadnicovými systémy
 import json                         # v praxi 4 fce: load, loads, dump, dumps
 import math
+import statistics
 
 def prevod_wgs2jtsk(x, y):
     wgs2jtsk = Transformer.from_crs(4326, 5514, always_xy = True)
@@ -19,8 +20,8 @@ with open("kontejnery.geojson", encoding="utf-8") as kontejnery_f:
     kontejnery_gj = json.load(kontejnery_f)
 data_adresy = adresy_gj['features']
 data_kontejnery = kontejnery_gj['features']
-print(f"Úspěšně načtěno {len(data_adresy)} adres.")
-print(f"Úspěšně načtěno {len(data_kontejnery)} kontejnerů.")
+print(f"Úspěšně načtěno {len(data_adresy)} adresních bodů.")
+print(f"Úspěšně načtěno {len(data_kontejnery)} lokalit kontejnerů na tříděný odpad.")
 data_volne_kontejnery = []
 for i in range (len(data_kontejnery)):
     data_kontejnery_tridici = data_kontejnery[i]
@@ -45,11 +46,17 @@ for i in range(pocet_adres):
             minimalni = vzd
     if minimalni > maximalni_z_minimalnich:
         maximalni_z_minimalnich = minimalni
+        if maximalni_z_minimalnich > 10000:
+            print(f"Pravděpodobná chyba ve vstupních datech! Existuje adresní místo se vzdáleností více než 10 km (konkrétně {maximalni_z_minimalnich} m) k nejbližšímu kontejneru.")
+            print("Běh programu je z tohoto důvodu ukončen. Zkontrolujte prosím vstupní data.")
+            exit()
         maximalni_info = {"ulice_max":adresa["properties"]["addr:street"], "cislo_max":adresa["properties"]["addr:housenumber"], "hodnota_max": round(maximalni_z_minimalnich)}
     seznam_minimalnich.append(minimalni)
     soucet_minimalnich += minimalni
 
+med = round(statistics.median(seznam_minimalnich))
 print(f"Průměrná vzdálenost ke kontejneru je: {round(soucet_minimalnich/pocet_adres)} m.")
+print(f"Medián vzdáleností ke kontejneru je: {med} m.")
 print(f"Největší vzdálenost ke kontejneru je z adresy {maximalni_info['ulice_max']} {maximalni_info['cislo_max']} a to {maximalni_info['hodnota_max']} m.")
 
 print(len(seznam_minimalnich))
