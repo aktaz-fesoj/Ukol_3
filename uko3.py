@@ -14,6 +14,35 @@ def vzdalenost_bodu(x1,y1,x2,y2):
     vzd = math.sqrt(delta_x**2 + delta_y**2)
     return(vzd)
 
+def roztrid_kontejnery(data_kontejnery):
+    data_volne_kontejnery = []
+    data_privatni_kontejnery = []
+    for i in range (len(data_kontejnery)):
+        data_kontejner_i = data_kontejnery[i]
+        if data_kontejner_i["properties"]["PRISTUP"] == "volně":
+            data_volne_kontejnery.append(data_kontejner_i)
+        elif data_kontejner_i["properties"]["PRISTUP"] == "obyvatelům domu":
+            data_privatni_kontejnery.append(data_kontejner_i)
+    return(data_volne_kontejnery, data_privatni_kontejnery)
+
+def roztrid_adresy(data_adresy, data_privatni_kontejnery):
+    data_adresy_bez = []
+    data_adresy_s = []
+    for a in range (len(data_adresy)):
+        data_adresa_a = data_adresy[a]
+        shoda = False
+        adresa_dohromady = f"{data_adresa_a['properties']['addr:street']} {data_adresa_a['properties']['addr:housenumber']}"
+        for e in range(len(data_privatni_kontejnery)):
+            data_kontejner_e = data_privatni_kontejnery[e]
+            if data_kontejner_e["properties"]["STATIONNAME"] == adresa_dohromady:
+                data_adresy_s.append(data_adresa_a)
+                shoda = True
+        if shoda == False:
+            data_adresy_bez.append(data_adresa_a)
+    return(data_adresy_s, data_adresy_bez)
+
+
+
 with open("adresy.geojson", encoding="utf-8") as adresy_f:
     adresy_gj = json.load(adresy_f)
 with open("kontejnery.geojson", encoding="utf-8") as kontejnery_f:
@@ -22,37 +51,20 @@ data_adresy = adresy_gj['features']
 data_kontejnery = kontejnery_gj['features']
 print(f"Úspěšně načtěno {len(data_adresy)} adresních bodů.")
 print(f"Úspěšně načtěno {len(data_kontejnery)} lokalit kontejnerů na tříděný odpad.")
-data_volne_kontejnery = []
-data_privatni_kontejnery = []
-data_adresy_bez = []
-data_adresy_s = []
-kon = 0
-for i in range (len(data_kontejnery)):
-    data_kontejner_i = data_kontejnery[i]
-    if data_kontejner_i["properties"]["PRISTUP"] == "volně":
-        data_volne_kontejnery.append(data_kontejner_i)
-    elif data_kontejner_i["properties"]["PRISTUP"] == "obyvatelům domu":
-        data_privatni_kontejnery.append(data_kontejner_i)
+
+
+data_volne_kontejnery, data_privatni_kontejnery = roztrid_kontejnery(data_kontejnery)
+data_adresy_s, data_adresy_bez = roztrid_adresy(data_adresy, data_privatni_kontejnery)
         
-for a in range (len(data_adresy)):
-    data_adresa_a = data_adresy[a]
-    shoda = False
-    adresa_dohromady = f"{data_adresa_a['properties']['addr:street']} {data_adresa_a['properties']['addr:housenumber']}"
-    for e in range(len(data_privatni_kontejnery)):
-        data_kontejner_e = data_privatni_kontejnery[e]
-        if data_kontejner_e["properties"]["STATIONNAME"] == adresa_dohromady:
-            data_adresy_s.append(data_adresa_a)
-            shoda = True
-    if shoda == False:
-        data_adresy_bez.append(data_adresa_a)
-
-
 pocet_adres_s = len(data_adresy_s)
 pocet_adres_bez = len(data_adresy_bez)
 pocet_volnych_kontejneru =  len(data_volne_kontejnery)
 pocet_privatnich_kontejneru =  len(data_privatni_kontejnery)
 
-print(pocet_adres_bez, pocet_adres_s, pocet_volnych_kontejneru, pocet_privatnich_kontejneru)
+print(f"Celkem {pocet_adres_bez} adres bez domácího kontejneru.")
+print(f"Celkem {pocet_adres_s} adres s domácím kontejnerem.")
+print(f"Celkem {pocet_volnych_kontejneru} volně přístupných kontejnerů.")
+print(f"Celkem {pocet_privatnich_kontejneru} kontejnerů přístupných pouze obyvatelům domu.")
 
 seznam_minimalnich = []
 soucet_minimalnich = 0
@@ -78,25 +90,12 @@ for i in range(pocet_adres_bez):
     seznam_minimalnich.append(minimalni)
     soucet_minimalnich += minimalni
 
-med = round(statistics.median(seznam_minimalnich))
-print(f"Průměrná vzdálenost ke kontejneru je: {round(soucet_minimalnich/pocet_adres_bez)} m.")
-print(f"Medián vzdáleností ke kontejneru je: {med} m.")
-print(f"Největší vzdálenost ke kontejneru je z adresy {maximalni_info['ulice_max']} {maximalni_info['cislo_max']} a to {maximalni_info['hodnota_max']} m.")
-
-print(len(seznam_minimalnich))
-print(len(adresy_gj['features']))
-
-
+for i in range(pocet_adres_s):      #Do seznamu přidám vzdálenosti 0 za privátní kontejnery, kvůli následnému výpočtu mediánu
+    seznam_minimalnich.append(0)
 
 med = round(statistics.median(seznam_minimalnich))
 print(f"Průměrná vzdálenost ke kontejneru je: {round(soucet_minimalnich/len(data_adresy))} m.")
 print(f"Medián vzdáleností ke kontejneru je: {med} m.")
 print(f"Největší vzdálenost ke kontejneru je z adresy {maximalni_info['ulice_max']} {maximalni_info['cislo_max']} a to {maximalni_info['hodnota_max']} m.")
 
-print(len("minimalni_seznam delka porovnani s poctem adres:"))
-print(len(seznam_minimalnich))
-print(len(adresy_gj['features']))
-print(len("private_seznam delka porovnani s poctem shodnych adres:"))
-print(len(data_privatni_kontejnery))
-
-#print(json.dumps(joo))      #Převedo do json reprezentace
+#print(json.dumps(joo))
