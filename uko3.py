@@ -56,17 +56,17 @@ def roztrid_adresy(features, data_adresy, data_privatni_kontejnery):
 
 features = []
 def priprav_do_geojsonu(features, sour_x, sour_y, adresa_prozapis_ulice, adresa_prozapis_cislo, kontejner_id):
-
     point = Point((sour_x, sour_y))
-
-    # add more features...
-    # features.append(...)
-
     features.append(Feature(geometry=point, properties={"addr:street": f"{adresa_prozapis_ulice}", "addr:housenumber": f"{adresa_prozapis_cislo}", "kontejner": f"{kontejner_id}"}))
     return(features)
 
-data_adresy, data_kontejnery = otevri_data("adresy.geojson", "kontejnery.geojson")
+def vypis_geojson(features):
+    feature_collection = FeatureCollection(features)
+    with open('adresy_kontejnery.geojson', 'w', encoding="utf-8") as f:
+        json.dump(feature_collection, f, ensure_ascii=False, indent=4)
+    print("Informace o nejbližším kontejneru ke každě adrese je uložena v nově vytvořeném souboru 'adresy_kontejnery.geojson'.")
 
+data_adresy, data_kontejnery = otevri_data("adresy.geojson", "kontejnery.geojson")
 data_volne_kontejnery, data_privatni_kontejnery = roztrid_kontejnery(data_kontejnery)
 features, data_adresy_s, data_adresy_bez = roztrid_adresy(features, data_adresy, data_privatni_kontejnery)
         
@@ -74,7 +74,6 @@ pocet_adres_s = len(data_adresy_s)
 pocet_adres_bez = len(data_adresy_bez)
 pocet_volnych_kontejneru =  len(data_volne_kontejnery)
 pocet_privatnich_kontejneru =  len(data_privatni_kontejnery)
-
 print(f"Celkem {pocet_adres_bez} adres bez domácího kontejneru.")
 print(f"Celkem {pocet_adres_s} adres s domácím kontejnerem.")
 print(f"Celkem {pocet_volnych_kontejneru} volně přístupných kontejnerů.")
@@ -114,10 +113,4 @@ print(f"Průměrná vzdálenost ke kontejneru je: {round(soucet_minimalnich/len(
 print(f"Medián vzdáleností ke kontejneru je: {med} m.")
 print(f"Největší vzdálenost ke kontejneru je z adresy {maximalni_info['ulice_max']} {maximalni_info['cislo_max']} a to {maximalni_info['hodnota_max']} m.")
 
-
-
-feature_collection = FeatureCollection(features)
-
-with open('adresy_kontejnery.geojson', 'w', encoding="utf-8") as f:
-    json.dump(feature_collection, f, ensure_ascii=False, indent=4)
-
+vypis_geojson(features)
