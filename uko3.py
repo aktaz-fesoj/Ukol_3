@@ -2,6 +2,18 @@ from pyproj import Transformer      #Knihovna pyproj pro práci se souřadnicov�
 import json                         # v praxi 4 fce: load, loads, dump, dumps
 import math
 import statistics
+from geojson import Point, Feature, FeatureCollection
+
+def otevri_data(adresy, kontejnery):
+    with open(adresy, encoding="utf-8") as adresy_f:
+        adresy_gj = json.load(adresy_f)
+    with open(kontejnery, encoding="utf-8") as kontejnery_f:
+        kontejnery_gj = json.load(kontejnery_f)
+    data_adresy = adresy_gj['features']
+    data_kontejnery = kontejnery_gj['features']
+    print(f"Úspěšně načtěno {len(data_adresy)} adresních bodů.")
+    print(f"Úspěšně načtěno {len(data_kontejnery)} lokalit kontejnerů na tříděný odpad.")
+    return(data_adresy, data_kontejnery)
 
 def prevod_wgs2jtsk(x, y):
     wgs2jtsk = Transformer.from_crs(4326, 5514, always_xy = True)
@@ -25,7 +37,7 @@ def roztrid_kontejnery(data_kontejnery):
             data_privatni_kontejnery.append(data_kontejner_i)
     return(data_volne_kontejnery, data_privatni_kontejnery)
 
-def roztrid_adresy(data_adresy, data_privatni_kontejnery):
+def roztrid_adresy(features, data_adresy, data_privatni_kontejnery):
     data_adresy_bez = []
     data_adresy_s = []
     for a in range (len(data_adresy)):
@@ -36,25 +48,27 @@ def roztrid_adresy(data_adresy, data_privatni_kontejnery):
             data_kontejner_e = data_privatni_kontejnery[e]
             if data_kontejner_e["properties"]["STATIONNAME"] == adresa_dohromady:
                 data_adresy_s.append(data_adresa_a)
+                priprav_do_geojsonu(features, data_adresa_a["geometry"]["coordinates"][0], data_adresa_a["geometry"]["coordinates"][1], data_adresa_a['properties']['addr:street'], data_adresa_a['properties']['addr:housenumber'], data_kontejner_e["properties"]["ID"])
                 shoda = True
         if shoda == False:
             data_adresy_bez.append(data_adresa_a)
-    return(data_adresy_s, data_adresy_bez)
+    return(features, data_adresy_s, data_adresy_bez)
 
+features = []
+def priprav_do_geojsonu(features, sour_x, sour_y, adresa_prozapis_ulice, adresa_prozapis_cislo, kontejner_id):
 
+    point = Point((sour_x, sour_y))
 
-with open("adresy.geojson", encoding="utf-8") as adresy_f:
-    adresy_gj = json.load(adresy_f)
-with open("kontejnery.geojson", encoding="utf-8") as kontejnery_f:
-    kontejnery_gj = json.load(kontejnery_f)
-data_adresy = adresy_gj['features']
-data_kontejnery = kontejnery_gj['features']
-print(f"Úspěšně načtěno {len(data_adresy)} adresních bodů.")
-print(f"Úspěšně načtěno {len(data_kontejnery)} lokalit kontejnerů na tříděný odpad.")
+    # add more features...
+    # features.append(...)
 
+    features.append(Feature(geometry=point, properties={"addr:street": f"{adresa_prozapis_ulice}", "addr:housenumber": f"{adresa_prozapis_cislo}", "kontejner": f"{kontejner_id}"}))
+    return(features)
+
+data_adresy, data_kontejnery = otevri_data("adresy.geojson", "kontejnery.geojson")
 
 data_volne_kontejnery, data_privatni_kontejnery = roztrid_kontejnery(data_kontejnery)
-data_adresy_s, data_adresy_bez = roztrid_adresy(data_adresy, data_privatni_kontejnery)
+features, data_adresy_s, data_adresy_bez = roztrid_adresy(features, data_adresy, data_privatni_kontejnery)
         
 pocet_adres_s = len(data_adresy_s)
 pocet_adres_bez = len(data_adresy_bez)
@@ -80,6 +94,7 @@ for i in range(pocet_adres_bez):
         vzd = vzdalenost_bodu(*adresa["geometry"]["coordinates"], *kontejner["geometry"]["coordinates"])
         if u == 0 or vzd < minimalni:
             minimalni = vzd
+            minimalni_info = {"ulice_min":adresa["properties"]["addr:street"], "cislo_min":adresa["properties"]["addr:housenumber"], "kontejner_min":kontejner["properties"]["ID"]}
     if minimalni > maximalni_z_minimalnich:
         maximalni_z_minimalnich = minimalni
         if maximalni_z_minimalnich > 10000:
@@ -87,6 +102,7 @@ for i in range(pocet_adres_bez):
             print("Běh programu je z tohoto důvodu ukončen. Zkontrolujte prosím vstupní data.")
             exit()
         maximalni_info = {"ulice_max":adresa["properties"]["addr:street"], "cislo_max":adresa["properties"]["addr:housenumber"], "hodnota_max": round(maximalni_z_minimalnich)}
+    priprav_do_geojsonu(features, adresa["geometry"]["coordinates"][0], adresa["geometry"]["coordinates"][1], minimalni_info["ulice_min"], minimalni_info["cislo_min"], minimalni_info["kontejner_min"])
     seznam_minimalnich.append(minimalni)
     soucet_minimalnich += minimalni
 
@@ -98,4 +114,10 @@ print(f"Průměrná vzdálenost ke kontejneru je: {round(soucet_minimalnich/len(
 print(f"Medián vzdáleností ke kontejneru je: {med} m.")
 print(f"Největší vzdálenost ke kontejneru je z adresy {maximalni_info['ulice_max']} {maximalni_info['cislo_max']} a to {maximalni_info['hodnota_max']} m.")
 
-#print(json.dumps(joo))
+
+
+feature_collection = FeatureCollection(features)
+
+with open('adresy_kontejnery.geojson', 'w', encoding="utf-8") as f:
+    json.dump(feature_collection, f, ensure_ascii=False, indent=4)
+
