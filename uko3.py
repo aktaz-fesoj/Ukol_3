@@ -1,8 +1,8 @@
-from pyproj import Transformer      #Knihovna pyproj pro práci se souřadnicovými systémy
-import json                         
+from pyproj import Transformer      #Knihovna pyproj pro práci se souřadnicovými systémy                       
 import math
 import statistics
 from geojson import Point, Feature, FeatureCollection
+from geojson import load, dump
 
 def otevri_data(adresy, kontejnery):
     """Načítá data ze dvou souborů formátu '.geojson'. Vrací z těchto data uložená pod klíčem 'features'.
@@ -13,15 +13,20 @@ def otevri_data(adresy, kontejnery):
                     data_adresy: Data uložená pod klíčem 'features' v souboru 1
                     data_kontejnery: Data uložená pod klíčem 'features' v souboru 2
     """
-    with open(adresy, encoding="utf-8") as adresy_f:            #Otevření souboru s adresami a načtení dat z něj
-        adresy_gj = json.load(adresy_f)
-    with open(kontejnery, encoding="utf-8") as kontejnery_f:    #Otevření souboru s kontejnery a načtení dat z něj
-        kontejnery_gj = json.load(kontejnery_f)
-    data_adresy = adresy_gj['features']
-    data_kontejnery = kontejnery_gj['features']
-    print(f"Úspěšně načtěno {len(data_adresy)} adresních bodů.")
-    print(f"Úspěšně načtěno {len(data_kontejnery)} lokalit kontejnerů na tříděný odpad.")
-    return(data_adresy, data_kontejnery)
+    try:
+        with open(adresy, encoding="utf-8") as adresy_f:            #Otevření souboru s adresami a načtení dat z něj
+            adresy_gj = load(adresy_f)
+        with open(kontejnery, encoding="utf-8") as kontejnery_f:    #Otevření souboru s kontejnery a načtení dat z něj
+            kontejnery_gj = load(kontejnery_f)
+        data_adresy = adresy_gj['features']
+        data_kontejnery = kontejnery_gj['features']
+        print(f"Detekováno {len(data_adresy)} adresních bodů.")
+        print(f"Detekováno {len(data_kontejnery)} lokalit kontejnerů na tříděný odpad.")
+        print("Program nyní kontroluje data a počítá výsledky.")
+        return(data_adresy, data_kontejnery)
+    except FileNotFoundError:
+        print("Bohužel alespoň jeden ze vstupních souborů nebyl nalezen.") 
+        print("Zkontrolujte, zda soubory mají názvy adresy.geojson a kontejnery.geojson a jsou uloženy ve stejné složce, ze které spouštíte tento program.")
 
 def prevod_wgs2jtsk(x, y):
     """Souřadnice x a y v souřadnicovém systému WGS84 převede do souřadnicového systému s-jtsk a vrátí je jako tuple
@@ -31,6 +36,9 @@ def prevod_wgs2jtsk(x, y):
         Returns:
                     out (tuple): Uspořádaná dvojice souřadnic ve formátu s-jtsk
     """
+    if abs(y) > 90 or abs(x) > 180:
+        print("Nevalidní souřadnice adresy. Jsou požadovány souřadnice v souřadnicovém systému WGS84. Běh programu byl ukončen, opravte data a zkuste to znovu.")
+        quit()
     wgs2jtsk = Transformer.from_crs(4326, 5514, always_xy = True)       #Převedení souřadnic z WGS84 do s-jtsk pomocí nástroje Transformer z knihovny pyproj
     out = wgs2jtsk.transform(x, y)                                      #always xy je true, tzn. první zadávaný je souřadnice zeměpisné délky
     return(out)
@@ -58,15 +66,19 @@ def roztrid_kontejnery(data_kontejnery):
                     data_volne_kontejnery: Seznam volně přístupných kontejnerů
                     data_privatni_kontejnery: Seznam privátních kontejnerů (přístupných jen obyvatelům daného domu)
     """
-    data_volne_kontejnery = []
-    data_privatni_kontejnery = []
-    for i in range (len(data_kontejnery)):                                      #Počet opakování dán počtem všech kontejnerů
-        data_kontejner_i = data_kontejnery[i]                                   #Výběr i-tého kontejneru z dat
-        if data_kontejner_i["properties"]["PRISTUP"] == "volně":                #Pokud je kontejner volně přístupný, bude přidán do seznamu volných kontejnerů
-            data_volne_kontejnery.append(data_kontejner_i)
-        elif data_kontejner_i["properties"]["PRISTUP"] == "obyvatelům domu":    #Pokud není kontejner volně přístupný, bude přidán do seznamu privátních kontejnerů
-            data_privatni_kontejnery.append(data_kontejner_i)
-    return(data_volne_kontejnery, data_privatni_kontejnery)
+    try:
+        data_volne_kontejnery = []
+        data_privatni_kontejnery = []
+        for i in range (len(data_kontejnery)):                                      #Počet opakování dán počtem všech kontejnerů
+            data_kontejner_i = data_kontejnery[i]                                   #Výběr i-tého kontejneru z dat
+            if data_kontejner_i["properties"]["PRISTUP"] == "volně":                #Pokud je kontejner volně přístupný, bude přidán do seznamu volných kontejnerů
+                data_volne_kontejnery.append(data_kontejner_i)
+            elif data_kontejner_i["properties"]["PRISTUP"] == "obyvatelům domu":    #Pokud není kontejner volně přístupný, bude přidán do seznamu privátních kontejnerů
+                data_privatni_kontejnery.append(data_kontejner_i)
+        return(data_volne_kontejnery, data_privatni_kontejnery)
+    except KeyError:
+        print("Vstupní soubor kontejnerů neobsahuje ke každému kontejneru atribut PRISTUP. Program je ukončen, opravte prosím vstupní data.")
+        quit()
 
 def roztrid_adresy(features, data_adresy, data_privatni_kontejnery):
     """Roztřídí data o adresách dle toho, zda je na nich kontejner přístupný obyvatelům daného domu
@@ -84,7 +96,11 @@ def roztrid_adresy(features, data_adresy, data_privatni_kontejnery):
     for a in range (len(data_adresy)):              #Počet opakování dán počtem všech adres
         data_adresa_a = data_adresy[a]              #Výběr a-tého kontejneru z dat
         shoda = False                               #Při každém opakování začíná shoda na hodnotě False
-        adresa_dohromady = f"{data_adresa_a['properties']['addr:street']} {data_adresa_a['properties']['addr:housenumber']}"    #Spojení ulice a čísla domu do jednoho textového řetězce, aby byl porovnatelný s adresou uvedenou v datech kontejneru
+        try:
+            adresa_dohromady = f"{data_adresa_a['properties']['addr:street']} {data_adresa_a['properties']['addr:housenumber']}"    #Spojení ulice a čísla domu do jednoho textového řetězce, aby byl porovnatelný s adresou uvedenou v datech kontejneru
+        except KeyError:
+            print("Vstupní soubor s adresami neobsahuje u každé adresy v properties atribut addr:street, nebo atribut addr:housenumber. Program je ukončen, přečtěte si prosím dokumentaci, opravte vstupní data a zkuste to znovu.")
+            quit()
         for e in range(len(data_privatni_kontejnery)):
             data_kontejner_e = data_privatni_kontejnery[e]
             if data_kontejner_e["properties"]["STATIONNAME"] == adresa_dohromady:       #Porovnání adresy s adresou privátního kontejneru
@@ -119,38 +135,48 @@ def vypis_geojson(features):
     """
     feature_collection = FeatureCollection(features)
     with open('adresy_kontejnery.geojson', 'w', encoding="utf-8") as f:
-        json.dump(feature_collection, f, ensure_ascii=False, indent=4) #Bez parametru ensure_ascii nastaveného na False docházelo k nesprávnému zápisu některých znaků, parametrt indent vylepšuje čitelnost výsledného souboru, zajišťuje vhodné odřádkovávání
+        dump(feature_collection, f, ensure_ascii=False, indent=4) #Bez parametru ensure_ascii nastaveného na False docházelo k nesprávnému zápisu některých znaků, parametrt indent vylepšuje čitelnost výsledného souboru, zajišťuje vhodné odřádkovávání
     print("Informace o nejbližším kontejneru ke každě adrese je uložena v nově vytvořeném souboru 'adresy_kontejnery.geojson'.")
 
 data_adresy, data_kontejnery = otevri_data("adresy.geojson", "kontejnery.geojson")
 data_volne_kontejnery, data_privatni_kontejnery = roztrid_kontejnery(data_kontejnery)
 features, data_adresy_s, data_adresy_bez = roztrid_adresy(features, data_adresy, data_privatni_kontejnery)
-        
+
 pocet_adres_s = len(data_adresy_s)
 pocet_adres_bez = len(data_adresy_bez)
 pocet_volnych_kontejneru =  len(data_volne_kontejnery)
 pocet_privatnich_kontejneru =  len(data_privatni_kontejnery)
-print(f"Celkem {pocet_adres_bez} adres bez domácího kontejneru.")
-print(f"Celkem {pocet_adres_s} adres s domácím kontejnerem.")
-print(f"Celkem {pocet_volnych_kontejneru} volně přístupných kontejnerů.")
-print(f"Celkem {pocet_privatnich_kontejneru} kontejnerů přístupných pouze obyvatelům domu.")
 
 seznam_minimalnich = []
 soucet_minimalnich = 0
 maximalni_z_minimalnich = 0
+
 for i in range(pocet_adres_bez):        #Počet opakování dán počtem adres bez privátního kontejneru
-    adresa = data_adresy_bez[i]         #Výběr i-té adresy z dat
-    nove_sour = prevod_wgs2jtsk(*adresa["geometry"]["coordinates"]) #Převedení souřadnic do s-jtsk
-    adresa["geometry"]["coordinates"] = nove_sour   #Nahrazení předchozích souřadnic novými
-    vzd = 0
-    minimalni = 0
+    try:
+        adresa = data_adresy_bez[i]         #Výběr i-té adresy z dat
+        nove_sour = prevod_wgs2jtsk(*adresa["geometry"]["coordinates"]) #Převedení souřadnic do s-jtsk
+        adresa["geometry"]["coordinates"] = nove_sour   #Nahrazení předchozích souřadnic novými
+        vzd = 0
+        minimalni = 0
+    except TypeError:
+        print("Vstupní soubor adres neobsahuje správné souřadnice. Program je ukončen, opravte prosím vstupní data.")
+        quit()
     #Následující cyklus počítá vzdálenost adresy a každého z veřejných kontejnerů, přičemž nejnižší ze vzdáleností uloží do proměnné minimalni
     for u in range(pocet_volnych_kontejneru):      #Počet opakování dán počtem volně přístupných kontejneru
         kontejner = data_volne_kontejnery[u]       #Výběr u-tého kontejneru z dat
-        vzd = vzdalenost_bodu(*adresa["geometry"]["coordinates"], *kontejner["geometry"]["coordinates"])        #Výpočet vzdálenosti
+        try:
+            vzd = vzdalenost_bodu(*adresa["geometry"]["coordinates"], *kontejner["geometry"]["coordinates"])        #Výpočet vzdálenosti
+        except TypeError:
+            print("Vstupní soubor kontejnerů neobsahuje správné souřadnice. Program je ukončen, opravte prosím vstupní data.")
+            quit()
         if u == 0 or vzd < minimalni:   #Zápis minimální vzdálenosti při prvním opakování a vždy při "překonání" této vzdálenosti
             minimalni = vzd
+        try:
             minimalni_info = {"ulice_min":adresa["properties"]["addr:street"], "cislo_min":adresa["properties"]["addr:housenumber"], "kontejner_min":kontejner["properties"]["ID"]} #Uložení informací o minimální vzdálenosti a id kontejneru k němuž se tato vzdálenost vztahuje
+        except KeyError:
+            print("Vstupní soubory neobsahují některý s požadovaných atributů. Program je ukončen, přečtěte si prosím dokumentaci, opravte vstupní data a zkuste to znovu.")
+            quit()
+
     if minimalni > maximalni_z_minimalnich: #Hledání nejvyšší z nejmenších vzdáleností
         maximalni_z_minimalnich = minimalni
         if maximalni_z_minimalnich > 10000: # Je-li nejvyšší z nejmenších vzdáleností vyšší než 10000 metrů, program skončí s chybovou hláškou
@@ -164,6 +190,11 @@ for i in range(pocet_adres_bez):        #Počet opakování dán počtem adres b
 
 for i in range(pocet_adres_s):      #Do seznamu přidám vzdálenosti 0 za každou adresu s privátním kontejnerem, především kvůli následnému výpočtu mediánu
     seznam_minimalnich.append(0)
+
+print(f"Celkem {pocet_adres_bez} adres bez domácího kontejneru.")
+print(f"Celkem {pocet_adres_s} adres s domácím kontejnerem.")
+print(f"Celkem {pocet_volnych_kontejneru} volně přístupných kontejnerů.")
+print(f"Celkem {pocet_privatnich_kontejneru} kontejnerů přístupných pouze obyvatelům domu.")
 
 med = round(statistics.median(seznam_minimalnich))      #Výpočet a zaokrouhlení mediánu na celé metry
 print(f"Průměrná vzdálenost ke kontejneru je: {round(soucet_minimalnich/len(data_adresy))} m.") #Výpočet a zaokrouhlení průměru na celé metry. Dělím celkovým počtem adres, tedy beru v potaz i adresy s privátním kontejnerem (vzdálenost k němu je 0, není potřeba ji přičítat do součtu minimalních)
