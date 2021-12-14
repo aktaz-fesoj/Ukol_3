@@ -11,16 +11,16 @@ Každá položka vstupního souboru musí mít v properties uloženy následují
 adresy.geojson - addr:housenumber, addr:street
 kontejnery.geojson - STATIONNAME, ID, PRISTUP
 
-Tyto požadavky splňují data o adresách stažená z databáze OpenStreetMaps z portálu http://overpass-turbo.eu/ a data o kotejnerech 
-stažená z Přažského Geoportálu https://www.geoportalpraha.cz/cs/data/otevrena-data/8726EF0E-0834-463B-9E5F-FE09E62D73FB, pro který byl program tvořen.
-Použít lze ale i jakákoliv jiná data splňující výše uvedenoé podmínky.
+Tyto požadavky splňují data o adresách stažená z databáze OpenStreetMap z portálu http://overpass-turbo.eu/ a data o kotejnerech 
+stažená z Přažského Geoportálu https://www.geoportalpraha.cz/cs/data/otevrena-data/8726EF0E-0834-463B-9E5F-FE09E62D73FB, pro která byl program navržen.
+Použít lze ale i jakákoliv jiná data splňující výše uvedené podmínky.
 
-Program na začátku roztřídí data o kontejnerech a o adresách, vytvoří čtyři seznamy se kterými poté pracuje. Seznam adres s vlastním kontejnere, seznam adres bez vlastního kontejneru, seznam veřejných kontejnerů a seznam privátních kontejnerů.
-S těmito seznami poté program pracuje, v případě chyby v datech vás informuje a vyzvě k její opravě.
+Program na začátku roztřídí data o kontejnerech a o adresách, vytvoří čtyři seznamy se kterými poté pracuje. Seznam adres s vlastním kontejnerem, seznam adres bez vlastního kontejneru, seznam veřejných kontejnerů a seznam privátních kontejnerů.
+S těmito seznamy poté program počítá, v případě chyby v datech vás informuje a vyzvě k její opravě.
 
-Výsledky:
-Program vypíše počet adres detekovaných ve vstupním souboru, baz ověření korektnostni jejich souřadnic a atributů.
-Program vypíše počet kontejnerů detekovaných ve vstupním souboru, baz ověření korektnostni jejich souřadnic a atributů. 
+Výsledky a výstupy:
+Program vypíše počet adres detekovaných ve vstupním souboru, bez ověření korektnostni jejich souřadnic a atributů.
+Program vypíše počet kontejnerů detekovaných ve vstupním souboru, bez ověření korektnostni jejich souřadnic a atributů. 
 Program vypíše počet adres bez domácího kontejneru.
 Program vypíše počet adres s domácím kontejnerem.
 Program vypíše počet volně přístupných kontejnerů.
@@ -29,4 +29,4 @@ Program vypíše průměrnou vzdálenost k nejbližšímu kontejneru (adresy s p
 Program vypíše medián vzdáleností k nejbližšímu kontejneru (adresy s privátní kontenery jsou brány v potaz, je pro ně uvažována vzdálenost 0).
 Program vypíše nejvyšší nalezenou vzdálenost k nejbližšímu kontejneru, včetně informace o tom kolik tato vzdálenost činí a o jakou adresu se jedná.
 
-Na závěr program vytvoří nový soubor 'adresy_kontejnery.geojson', ve kterém je ke každé adrese v atributu "kontejner" uloženo ID nejbližšího kontejneru k dané adrese. Souřadnicový systém tohoto souboru je s-jtsk.
+Na závěr program vytvoří nový soubor 'adresy_kontejnery.geojson', ve kterém je ke každé adrese v atributu "kontejner" uloženo ID nejbližšího kontejneru. Souřadnicovým systémem tohoto výstupního souboru je s-jtsk.
