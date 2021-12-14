@@ -105,7 +105,7 @@ def roztrid_adresy(features, data_adresy, data_privatni_kontejnery):
             data_kontejner_e = data_privatni_kontejnery[e]
             if data_kontejner_e["properties"]["STATIONNAME"] == adresa_dohromady:       #Porovnání adresy s adresou privátního kontejneru
                 data_adresy_s.append(data_adresa_a)                                     #Shodují-li se adresy, je adresa přidána do seznamu adres obsloužených privátním kontejnerem
-                features = priprav_do_geojsonu(features, data_adresa_a["geometry"]["coordinates"][0], data_adresa_a["geometry"]["coordinates"][1], data_adresa_a['properties']['addr:street'], data_adresa_a['properties']['addr:housenumber'], data_kontejner_e["properties"]["ID"]) #Uložení do seznamu k vypsání do nového geojson souboru s informacemi o adrese a id nejbližšího kontejneru
+                features = priprav_do_geojsonu(features, *prevod_wgs2jtsk(*data_adresa_a["geometry"]["coordinates"]), data_adresa_a['properties']['addr:street'], data_adresa_a['properties']['addr:housenumber'], data_kontejner_e["properties"]["ID"]) #Uložení do seznamu k vypsání do nového geojson souboru s informacemi o adrese a id nejbližšího kontejneru, souřadnice jsou převedeny do s-jtsk, aby byly ve výsledném geojsonu jednotné
                 shoda = True    #Pokud se mezi kontejnery najde kontejner se stejnou adresou, je proměnná shoda změněna na True
         if shoda == False:      #Pokud kontejner se stejnou adresou nalezen není, shoda zůstává False -> adresa je přidána do seznamu adres bez privátního kontejneru
             data_adresy_bez.append(data_adresa_a)
