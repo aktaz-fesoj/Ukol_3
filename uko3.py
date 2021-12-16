@@ -7,6 +7,7 @@ from geojson import load, dump
 
 wgs2jtsk = Transformer.from_crs(4326, 5514, always_xy = True)        #Převedení souřadnic z WGS84 do s-jtsk pomocí nástroje Transformer z knihovny pyproj
 
+LIMIT_MAX = 10000
 
 def otevri_data(soubor):
     """Načítá data ze souboru formátu '.geojson'. Vrací z tohoto souboru data uložená pod klíčem 'features'.
@@ -36,7 +37,6 @@ def otevri_data(soubor):
     except:
         print("Něco se nezdařilo. Soubor nebylo možné úspěšně načíst")
         quit()
-
 
 def prevod_wgs2jtsk(x, y):
     """Souřadnice x a y v souřadnicovém systému WGS84 převede do souřadnicového systému s-jtsk a vrátí je jako tuple
@@ -113,21 +113,19 @@ def roztrid_adresy(features, data_adresy, data_privatni_kontejnery):
             print("Vstupní soubor s adresami neobsahuje u každé adresy v properties atribut addr:street, nebo atribut addr:housenumber. \
                 Program je ukončen, přečtěte si prosím dokumentaci, opravte vstupní data a zkuste to znovu.")
             quit()
-        for e in range(len(data_privatni_kontejnery)):
-            data_kontejner_e = data_privatni_kontejnery[e]
-            if data_kontejner_e["properties"]["STATIONNAME"] == adresa_dohromady:       #Porovnání adresy s adresou privátního kontejneru
+        for prvek in data_privatni_kontejnery :
+            if prvek["properties"]["STATIONNAME"] == adresa_dohromady:       #Porovnání adresy s adresou privátního kontejneru
                 #Shodují-li se adresy, je adresa přidána do seznamu adres obsloužených privátním kontejnerem
                 data_adresy_s.append(data_adresa_a)
                 #   Uložení do seznamu k vypsání do nového geojson souboru s informacemi o adrese a id nejbližšího kontejneru, souřadnice jsou převedeny do s-jtsk,
                 #   aby byly ve výsledném geojsonu jednotné                                    
                 features = priprav_do_geojsonu(features, *prevod_wgs2jtsk(*data_adresa_a["geometry"]["coordinates"]), data_adresa_a['properties']['addr:street'], 
-                    data_adresa_a['properties']['addr:housenumber'], data_kontejner_e["properties"]["ID"])
+                    data_adresa_a['properties']['addr:housenumber'], prvek["properties"]["ID"])
                 shoda = True    #Pokud se mezi kontejnery najde kontejner se stejnou adresou, je proměnná shoda změněna na True
         if shoda == False:      #Pokud kontejner se stejnou adresou nalezen není, shoda zůstává False -> adresa je přidána do seznamu adres bez privátního kontejneru
             data_adresy_bez.append(data_adresa_a)
     return(features, data_adresy_s, data_adresy_bez)
 
-features = []
 def priprav_do_geojsonu(features, sour_x, sour_y, adresa_prozapis_ulice, adresa_prozapis_cislo, kontejner_id):
     """Připraví vložená data pro zápis do výstupního .geojson souboru
         Parameters:
@@ -156,6 +154,8 @@ def vypis_geojson(features):
         #   zajišťuje vhodné odřádkovávání
         dump(feature_collection, f, ensure_ascii=False, indent=4) 
     print("Informace o nejbližším kontejneru ke každě adrese je uložena v nově vytvořeném souboru 'adresy_kontejnery.geojson'.")
+
+features = []
 
 data_adresy = otevri_data("adresy.geojson")
 data_kontejnery = otevri_data("kontejnery.geojson")
@@ -204,7 +204,7 @@ for i in range(pocet_adres_bez):        #Počet opakování dán počtem adres b
 
     if minimalni > maximalni_z_minimalnich: #Hledání nejvyšší z nejmenších vzdáleností
         maximalni_z_minimalnich = minimalni
-        if maximalni_z_minimalnich > 10000: # Je-li nejvyšší z nejmenších vzdáleností vyšší než 10000 metrů, program skončí s chybovou hláškou
+        if maximalni_z_minimalnich > LIMIT_MAX: # Je-li nejvyšší z nejmenších vzdáleností vyšší než 10000 metrů, program skončí s chybovou hláškou
             print(f"Pravděpodobná chyba ve vstupních datech! Existuje adresní místo se vzdáleností více než 10 km (konkrétně {maximalni_z_minimalnich} m) k nejbližšímu kontejneru.")
             print("Běh programu je z tohoto důvodu ukončen. Zkontrolujte prosím vstupní data.")
             exit()
