@@ -1,8 +1,12 @@
+from json.decoder import JSONDecodeError
 from pyproj import Transformer      #Knihovna pyproj pro práci se souřadnicovými systémy                       
 import math
 import statistics
 from geojson import Point, Feature, FeatureCollection
 from geojson import load, dump
+
+wgs2jtsk = Transformer.from_crs(4326, 5514, always_xy = True)        #Převedení souřadnic z WGS84 do s-jtsk pomocí nástroje Transformer z knihovny pyproj
+
 
 def otevri_data(soubor):
     """Načítá data ze souboru formátu '.geojson'. Vrací z tohoto souboru data uložená pod klíčem 'features'.
@@ -21,10 +25,18 @@ def otevri_data(soubor):
         return(soubor_data)
     except FileNotFoundError:
         print("Vstupních souborů nebyl nalezen.") 
-        print(f"Zkontrolujte, zda soubor má název {soubor}.geojson a je uložen ve stejné složce, ze které spouštíte tento program.")
+        print(f"Zkontrolujte, zda soubor má požadovaný název a je uložen ve stejné složce, ze které spouštíte tento program.")
         quit()
     except PermissionError:
-        print(f"Program nemá oprávnění číst soubor {soubor}.geojson, opravte prosím problém a spusťte program znovu.")
+        print(f"Program nemá oprávnění číst soubor {soubor}, opravte prosím problém a spusťte program znovu.")
+        quit()
+    except JSONDecodeError:
+        print(f"Problém při načítání souboru, soubor {soubor} není validní.")
+        quit()
+    except:
+        print("Něco se nezdařilo. Soubor nebylo možné úspěšně načíst")
+        quit()
+
 
 def prevod_wgs2jtsk(x, y):
     """Souřadnice x a y v souřadnicovém systému WGS84 převede do souřadnicového systému s-jtsk a vrátí je jako tuple
@@ -37,8 +49,7 @@ def prevod_wgs2jtsk(x, y):
     if abs(y) > 90 or abs(x) > 180:
         print("Nevalidní souřadnice adresy. Jsou požadovány souřadnice v souřadnicovém systému WGS84. Běh programu byl ukončen, opravte data a zkuste to znovu.")
         quit()
-    wgs2jtsk = Transformer.from_crs(4326, 5514, always_xy = True)       #Převedení souřadnic z WGS84 do s-jtsk pomocí nástroje Transformer z knihovny pyproj
-    out = wgs2jtsk.transform(x, y)                                      #always xy je true, tzn. první zadávaný je souřadnice zeměpisné délky
+    out = wgs2jtsk.transform(x, y)                                      #always xy je true, tzn. první zadávaná je souřadnice zeměpisné délky
     return(out)
 
 def vzdalenost_bodu(x1,y1,x2,y2):
