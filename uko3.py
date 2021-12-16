@@ -1,9 +1,9 @@
-from json.decoder import JSONDecodeError
 from pyproj import Transformer      #Knihovna pyproj pro práci se souřadnicovými systémy                       
 import math
 import statistics
 from geojson import Point, Feature, FeatureCollection
 from geojson import load, dump
+from json.decoder import JSONDecodeError
 
 wgs2jtsk = Transformer.from_crs(4326, 5514, always_xy = True)        #Převedení souřadnic z WGS84 do s-jtsk pomocí nástroje Transformer z knihovny pyproj
 
