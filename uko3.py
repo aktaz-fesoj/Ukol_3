@@ -96,7 +96,8 @@ def roztrid_adresy(features, data_adresy, data_privatni_kontejnery):
                     data_adresy: Seznam adresních bodů
                     data_privatni_kontejnery: Seznam privátních kontejnerů
         Returns:
-                    features: Seznam určený k vypsání do výstupního souboru formátu .geojson, ve kterém je ke každé adrese uloženo id nejbližšího kontejneru s přidanými prvky
+                    features: Seznam určený k vypsání do výstupního souboru formátu .geojson, ve kterém je ke každé adrese uloženo id nejbližšího kontejneru 
+                        s přidanými prvky
                     data_adresy_s: Seznam adres s privátním kontejnerem
                     data_adresy_bez: Seznam adres bez privátního kontejneru
     """
@@ -106,15 +107,20 @@ def roztrid_adresy(features, data_adresy, data_privatni_kontejnery):
         data_adresa_a = data_adresy[a]              #Výběr a-tého kontejneru z dat
         shoda = False                               #Při každém opakování začíná shoda na hodnotě False
         try:
-            adresa_dohromady = f"{data_adresa_a['properties']['addr:street']} {data_adresa_a['properties']['addr:housenumber']}"    #Spojení ulice a čísla domu do jednoho textového řetězce, aby byl porovnatelný s adresou uvedenou v datech kontejneru
+            #Spojení ulice a čísla domu do jednoho textového řetězce, aby byl porovnatelný s adresou uvedenou v datech kontejneru
+            adresa_dohromady = f"{data_adresa_a['properties']['addr:street']} {data_adresa_a['properties']['addr:housenumber']}"
         except KeyError:
-            print("Vstupní soubor s adresami neobsahuje u každé adresy v properties atribut addr:street, nebo atribut addr:housenumber. Program je ukončen, přečtěte si prosím dokumentaci, opravte vstupní data a zkuste to znovu.")
+            print("Vstupní soubor s adresami neobsahuje u každé adresy v properties atribut addr:street, nebo atribut addr:housenumber. \
+                Program je ukončen, přečtěte si prosím dokumentaci, opravte vstupní data a zkuste to znovu.")
             quit()
         for e in range(len(data_privatni_kontejnery)):
             data_kontejner_e = data_privatni_kontejnery[e]
             if data_kontejner_e["properties"]["STATIONNAME"] == adresa_dohromady:       #Porovnání adresy s adresou privátního kontejneru
-                data_adresy_s.append(data_adresa_a)                                     #Shodují-li se adresy, je adresa přidána do seznamu adres obsloužených privátním kontejnerem
-                features = priprav_do_geojsonu(features, *prevod_wgs2jtsk(*data_adresa_a["geometry"]["coordinates"]), data_adresa_a['properties']['addr:street'], data_adresa_a['properties']['addr:housenumber'], data_kontejner_e["properties"]["ID"]) #Uložení do seznamu k vypsání do nového geojson souboru s informacemi o adrese a id nejbližšího kontejneru, souřadnice jsou převedeny do s-jtsk, aby byly ve výsledném geojsonu jednotné
+                #Shodují-li se adresy, je adresa přidána do seznamu adres obsloužených privátním kontejnerem
+                data_adresy_s.append(data_adresa_a)
+                #Uložení do seznamu k vypsání do nového geojson souboru s informacemi o adrese a id nejbližšího kontejneru, souřadnice jsou převedeny do s-jtsk, aby byly ve výsledném geojsonu jednotné                                    
+                features = priprav_do_geojsonu(features, *prevod_wgs2jtsk(*data_adresa_a["geometry"]["coordinates"]), data_adresa_a['properties']['addr:street'], 
+                    data_adresa_a['properties']['addr:housenumber'], data_kontejner_e["properties"]["ID"])
                 shoda = True    #Pokud se mezi kontejnery najde kontejner se stejnou adresou, je proměnná shoda změněna na True
         if shoda == False:      #Pokud kontejner se stejnou adresou nalezen není, shoda zůstává False -> adresa je přidána do seznamu adres bez privátního kontejneru
             data_adresy_bez.append(data_adresa_a)
@@ -134,7 +140,8 @@ def priprav_do_geojsonu(features, sour_x, sour_y, adresa_prozapis_ulice, adresa_
                     features: Seznam určený k vypsání do výstupního souboru formátu .geojson, ve kterém je ke každé adrese uloženo id nejbližšího kontejneru s přidanými prvky
     """
     point = Point((sour_x, sour_y))
-    features.append(Feature(geometry=point, properties={"addr:street": f"{adresa_prozapis_ulice}", "addr:housenumber": f"{adresa_prozapis_cislo}", "kontejner": f"{kontejner_id}"})) #Přidání adresního místa s ID do seznamu features
+    features.append(Feature(geometry=point, properties={"addr:street": f"{adresa_prozapis_ulice}", 
+        "addr:housenumber": f"{adresa_prozapis_cislo}", "kontejner": f"{kontejner_id}"})) #Přidání adresního místa s ID do seznamu features
     return(features)
 
 def vypis_geojson(features):
@@ -144,7 +151,8 @@ def vypis_geojson(features):
     """
     feature_collection = FeatureCollection(features)
     with open('adresy_kontejnery.geojson', 'w', encoding="utf-8") as f:
-        dump(feature_collection, f, ensure_ascii=False, indent=4) #Bez parametru ensure_ascii nastaveného na False docházelo k nesprávnému zápisu některých znaků, parametrt indent vylepšuje čitelnost výsledného souboru, zajišťuje vhodné odřádkovávání
+        #Bez parametru ensure_ascii nastaveného na False docházelo k nesprávnému zápisu některých znaků, parametrt indent vylepšuje čitelnost výsledného souboru, zajišťuje vhodné odřádkovávání
+        dump(feature_collection, f, ensure_ascii=False, indent=4) 
     print("Informace o nejbližším kontejneru ke každě adrese je uložena v nově vytvořeném souboru 'adresy_kontejnery.geojson'.")
 
 data_adresy = otevri_data("adresy.geojson")
@@ -186,7 +194,8 @@ for i in range(pocet_adres_bez):        #Počet opakování dán počtem adres b
         if u == 0 or vzd < minimalni:   #Zápis minimální vzdálenosti při prvním opakování a vždy při "překonání" této vzdálenosti
             minimalni = vzd
         try:
-            minimalni_info = {"ulice_min":adresa["properties"]["addr:street"], "cislo_min":adresa["properties"]["addr:housenumber"], "kontejner_min":kontejner["properties"]["ID"]} #Uložení informací o minimální vzdálenosti a id kontejneru k němuž se tato vzdálenost vztahuje
+            minimalni_info = {"ulice_min":adresa["properties"]["addr:street"], "cislo_min":adresa["properties"]["addr:housenumber"], 
+                "kontejner_min":kontejner["properties"]["ID"]} #Uložení informací o minimální vzdálenosti a id kontejneru k němuž se tato vzdálenost vztahuje
         except KeyError:
             print("Vstupní soubory neobsahují některý s požadovaných atributů. Program je ukončen, přečtěte si prosím dokumentaci, opravte vstupní data a zkuste to znovu.")
             quit()
@@ -197,8 +206,10 @@ for i in range(pocet_adres_bez):        #Počet opakování dán počtem adres b
             print(f"Pravděpodobná chyba ve vstupních datech! Existuje adresní místo se vzdáleností více než 10 km (konkrétně {maximalni_z_minimalnich} m) k nejbližšímu kontejneru.")
             print("Běh programu je z tohoto důvodu ukončen. Zkontrolujte prosím vstupní data.")
             exit()
-        maximalni_info = {"ulice_max":adresa["properties"]["addr:street"], "cislo_max":adresa["properties"]["addr:housenumber"], "hodnota_max": round(maximalni_z_minimalnich)} #Uložení informací o nejvyšší z nejnižších vzdáleností, aby mohly být následně vypsány
-    features = priprav_do_geojsonu(features, adresa["geometry"]["coordinates"][0], adresa["geometry"]["coordinates"][1], minimalni_info["ulice_min"], minimalni_info["cislo_min"], minimalni_info["kontejner_min"]) #Uložení do seznamu k vypsání do nového geojson souboru s informacemi o adrese a id nejbližšího kontejneru
+        maximalni_info = {"ulice_max":adresa["properties"]["addr:street"], "cislo_max":adresa["properties"]["addr:housenumber"], 
+            "hodnota_max": round(maximalni_z_minimalnich)} #Uložení informací o nejvyšší z nejnižších vzdáleností, aby mohly být následně vypsány
+    features = priprav_do_geojsonu(features, adresa["geometry"]["coordinates"][0], adresa["geometry"]["coordinates"][1], minimalni_info["ulice_min"], 
+        minimalni_info["cislo_min"], minimalni_info["kontejner_min"]) #Uložení do seznamu k vypsání do nového geojson souboru s informacemi o adrese a id nejbližšího kontejneru
     seznam_minimalnich.append(minimalni)    #Přidání minimální vzdálenosti ke kontejneru pro danou adresu do seznamu takových vzdáleností
     soucet_minimalnich += minimalni         #Přištění této vzdálenosti k předchozím takovýmto vzdálenostem
 
@@ -211,7 +222,8 @@ print(f"Celkem {pocet_volnych_kontejneru} volně přístupných kontejnerů.")
 print(f"Celkem {pocet_privatnich_kontejneru} kontejnerů přístupných pouze obyvatelům domu.")
 
 med = round(statistics.median(seznam_minimalnich))      #Výpočet a zaokrouhlení mediánu na celé metry
-print(f"Průměrná vzdálenost ke kontejneru je: {round(soucet_minimalnich/len(data_adresy))} m.") #Výpočet a zaokrouhlení průměru na celé metry. Dělím celkovým počtem adres, tedy beru v potaz i adresy s privátním kontejnerem (vzdálenost k němu je 0, není potřeba ji přičítat do součtu minimalních)
+#Výpočet a zaokrouhlení průměru na celé metry. Dělím celkovým počtem adres, tedy beru v potaz i adresy s privátním kontejnerem (vzdálenost k němu je 0, není potřeba ji přičítat do součtu minimalních)
+print(f"Průměrná vzdálenost ke kontejneru je: {round(soucet_minimalnich/len(data_adresy))} m.") 
 print(f"Medián vzdáleností ke kontejneru je: {med} m.")
 print(f"Největší vzdálenost ke kontejneru je z adresy {maximalni_info['ulice_max']} {maximalni_info['cislo_max']} a to {maximalni_info['hodnota_max']} m.")
 
