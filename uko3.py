@@ -22,6 +22,9 @@ def otevri_data(soubor):
     except FileNotFoundError:
         print("Vstupních souborů nebyl nalezen.") 
         print(f"Zkontrolujte, zda soubor má název {soubor}.geojson a je uložen ve stejné složce, ze které spouštíte tento program.")
+        quit()
+    except PermissionError:
+        print(f"Program nemá oprávnění číst soubor {soubor}.geojson, opravte prosím problém a spusťte program znovu.")
 
 def prevod_wgs2jtsk(x, y):
     """Souřadnice x a y v souřadnicovém systému WGS84 převede do souřadnicového systému s-jtsk a vrátí je jako tuple
