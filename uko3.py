@@ -4,8 +4,8 @@ import statistics
 from geojson import Point, Feature, FeatureCollection
 from geojson import load, dump
 
-def otevri_data(adresy, kontejnery):
-    """Načítá data ze dvou souborů formátu '.geojson'. Vrací z těchto data uložená pod klíčem 'features'.
+def otevri_data(soubor):
+    """Načítá data ze souboru formátu '.geojson'. Vrací z tohoto souboru data uložená pod klíčem 'features'.
         Parameters:
                     adresy (str): Cesta k souboru 1
                     kontejnery (str): Cesta k souboru 2
@@ -14,19 +14,14 @@ def otevri_data(adresy, kontejnery):
                     data_kontejnery: Data uložená pod klíčem 'features' v souboru 2
     """
     try:
-        with open(adresy, encoding="utf-8") as adresy_f:            #Otevření souboru s adresami a načtení dat z něj
-            adresy_gj = load(adresy_f)
-        with open(kontejnery, encoding="utf-8") as kontejnery_f:    #Otevření souboru s kontejnery a načtení dat z něj
-            kontejnery_gj = load(kontejnery_f)
-        data_adresy = adresy_gj['features']
-        data_kontejnery = kontejnery_gj['features']
-        print(f"Detekováno {len(data_adresy)} adresních bodů.")
-        print(f"Detekováno {len(data_kontejnery)} lokalit kontejnerů na tříděný odpad.")
-        print("Program nyní kontroluje data a počítá výsledky.")
-        return(data_adresy, data_kontejnery)
+        with open(soubor, encoding="utf-8") as f:            #Otevření souboru s adresami a načtení dat z něj
+            soubor_gj = load(f)
+        soubor_data = soubor_gj['features']
+
+        return(soubor_data)
     except FileNotFoundError:
-        print("Bohužel alespoň jeden ze vstupních souborů nebyl nalezen.") 
-        print("Zkontrolujte, zda soubory mají názvy adresy.geojson a kontejnery.geojson a jsou uloženy ve stejné složce, ze které spouštíte tento program.")
+        print("Vstupních souborů nebyl nalezen.") 
+        print(f"Zkontrolujte, zda soubor má název {soubor}.geojson a je uložen ve stejné složce, ze které spouštíte tento program.")
 
 def prevod_wgs2jtsk(x, y):
     """Souřadnice x a y v souřadnicovém systému WGS84 převede do souřadnicového systému s-jtsk a vrátí je jako tuple
@@ -138,7 +133,12 @@ def vypis_geojson(features):
         dump(feature_collection, f, ensure_ascii=False, indent=4) #Bez parametru ensure_ascii nastaveného na False docházelo k nesprávnému zápisu některých znaků, parametrt indent vylepšuje čitelnost výsledného souboru, zajišťuje vhodné odřádkovávání
     print("Informace o nejbližším kontejneru ke každě adrese je uložena v nově vytvořeném souboru 'adresy_kontejnery.geojson'.")
 
-data_adresy, data_kontejnery = otevri_data("adresy.geojson", "kontejnery.geojson")
+data_adresy = otevri_data("adresy.geojson")
+data_kontejnery = otevri_data("kontejnery.geojson")
+print(f"Detekováno {len(data_adresy)} adresních bodů.")
+print(f"Detekováno {len(data_kontejnery)} lokalit kontejnerů na tříděný odpad.")
+print("Program nyní kontroluje data a počítá výsledky.")
+
 data_volne_kontejnery, data_privatni_kontejnery = roztrid_kontejnery(data_kontejnery)
 features, data_adresy_s, data_adresy_bez = roztrid_adresy(features, data_adresy, data_privatni_kontejnery)
 
