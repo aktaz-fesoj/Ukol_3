@@ -5,18 +5,14 @@ from geojson import Point, Feature, FeatureCollection
 from geojson import load, dump
 from json.decoder import JSONDecodeError
 
-wgs2jtsk = Transformer.from_crs(4326, 5514, always_xy = True)        #Převedení souřadnic z WGS84 do s-jtsk pomocí nástroje Transformer z knihovny pyproj
-
 LIMIT_MAX = 10000
 
 def otevri_data(soubor):
     """Načítá data ze souboru formátu '.geojson'. Vrací z tohoto souboru data uložená pod klíčem 'features'.
         Parameters:
-                    adresy (str): Cesta k souboru 1
-                    kontejnery (str): Cesta k souboru 2
+                    soubor (str): Cesta k souboru
         Returns:
-                    data_adresy: Data uložená pod klíčem 'features' v souboru 1
-                    data_kontejnery: Data uložená pod klíčem 'features' v souboru 2
+                    soubor_data: Data uložená pod klíčem 'features' v souboru
     """
     try:
         with open(soubor, encoding="utf-8") as f:            #Otevření souboru s adresami a načtení dat z něj
@@ -25,7 +21,7 @@ def otevri_data(soubor):
 
         return(soubor_data)
     except FileNotFoundError:
-        print("Vstupních souborů nebyl nalezen.") 
+        print("Vstupní soubor nebyl nalezen.") 
         print(f"Zkontrolujte, zda soubor má požadovaný název a je uložen ve stejné složce, ze které spouštíte tento program.")
         quit()
     except PermissionError:
@@ -34,15 +30,19 @@ def otevri_data(soubor):
     except JSONDecodeError:
         print(f"Problém při načítání souboru, soubor {soubor} není validní.")
         quit()
+    except ValueError:
+        print(f"Problém při načítání souboru, soubor {soubor} není validní.")
+        quit()
     except:
         print("Něco se nezdařilo. Soubor nebylo možné úspěšně načíst")
         quit()
 
-def prevod_wgs2jtsk(x, y):
+def prevod_wgs2jtsk(x, y, wgs2jtsk):
     """Souřadnice x a y v souřadnicovém systému WGS84 převede do souřadnicového systému s-jtsk a vrátí je jako tuple
         Parameters:
                     x (double): Zeměpisná délka
                     y (double): Zeměpisná šířka
+                    wgs2jtsk: Objekt transformer pro převod mezi souřadnicovými systémy
         Returns:
                     out (tuple): Uspořádaná dvojice souřadnic ve formátu s-jtsk
     """
@@ -78,12 +78,11 @@ def roztrid_kontejnery(data_kontejnery):
     try:
         data_volne_kontejnery = []
         data_privatni_kontejnery = []
-        for i in range (len(data_kontejnery)):                                      #Počet opakování dán počtem všech kontejnerů
-            data_kontejner_i = data_kontejnery[i]                                   #Výběr i-tého kontejneru z dat
-            if data_kontejner_i["properties"]["PRISTUP"] == "volně":                #Pokud je kontejner volně přístupný, bude přidán do seznamu volných kontejnerů
-                data_volne_kontejnery.append(data_kontejner_i)
-            elif data_kontejner_i["properties"]["PRISTUP"] == "obyvatelům domu":    #Pokud není kontejner volně přístupný, bude přidán do seznamu privátních kontejnerů
-                data_privatni_kontejnery.append(data_kontejner_i)
+        for i in  data_kontejnery:                                   #Počet opakování dán počtem všech kontejnerů
+            if i["properties"]["PRISTUP"] == "volně":                #Pokud je kontejner volně přístupný, bude přidán do seznamu volných kontejnerů
+                data_volne_kontejnery.append(i)
+            elif i["properties"]["PRISTUP"] == "obyvatelům domu":    #Pokud není kontejner volně přístupný, bude přidán do seznamu privátních kontejnerů
+                data_privatni_kontejnery.append(i)
         return(data_volne_kontejnery, data_privatni_kontejnery)
     except KeyError:
         print("Vstupní soubor kontejnerů neobsahuje ke každému kontejneru atribut PRISTUP. Program je ukončen, opravte prosím vstupní data.")
@@ -96,8 +95,6 @@ def roztrid_adresy(features, data_adresy, data_privatni_kontejnery):
                     data_adresy: Seznam adresních bodů
                     data_privatni_kontejnery: Seznam privátních kontejnerů
         Returns:
-                    features: Seznam určený k vypsání do výstupního souboru formátu .geojson, ve kterém je ke každé adrese uloženo id nejbližšího kontejneru 
-                        s přidanými prvky
                     data_adresy_s: Seznam adres s privátním kontejnerem
                     data_adresy_bez: Seznam adres bez privátního kontejneru
     """
@@ -119,12 +116,12 @@ def roztrid_adresy(features, data_adresy, data_privatni_kontejnery):
                 data_adresy_s.append(data_adresa_a)
                 #   Uložení do seznamu k vypsání do nového geojson souboru s informacemi o adrese a id nejbližšího kontejneru, souřadnice jsou převedeny do s-jtsk,
                 #   aby byly ve výsledném geojsonu jednotné                                    
-                features = priprav_do_geojsonu(features, *prevod_wgs2jtsk(*data_adresa_a["geometry"]["coordinates"]), data_adresa_a['properties']['addr:street'], 
+                priprav_do_geojsonu(features, *prevod_wgs2jtsk(*data_adresa_a["geometry"]["coordinates"], wgs2jtsk), data_adresa_a['properties']['addr:street'], 
                     data_adresa_a['properties']['addr:housenumber'], prvek["properties"]["ID"])
                 shoda = True    #Pokud se mezi kontejnery najde kontejner se stejnou adresou, je proměnná shoda změněna na True
         if shoda == False:      #Pokud kontejner se stejnou adresou nalezen není, shoda zůstává False -> adresa je přidána do seznamu adres bez privátního kontejneru
             data_adresy_bez.append(data_adresa_a)
-    return(features, data_adresy_s, data_adresy_bez)
+    return(data_adresy_s, data_adresy_bez)
 
 def priprav_do_geojsonu(features, sour_x, sour_y, adresa_prozapis_ulice, adresa_prozapis_cislo, kontejner_id):
     """Připraví vložená data pro zápis do výstupního .geojson souboru
@@ -135,15 +132,12 @@ def priprav_do_geojsonu(features, sour_x, sour_y, adresa_prozapis_ulice, adresa_
                     adresa_prozapis_ulice: Hodnota klíče "addr:street" v properties výstupního geojson souboru
                     adresa_prozapis_cislo: Hodnota klíče "addr:housenumber" v properties výstupního geojson souboru
                     kontejner_id: Hodnota klíče "kontejner" v properties výstupního geojson souboru
-        Returns:
-                    features: Seznam určený k vypsání do výstupního souboru formátu .geojson, ve kterém je ke každé adrese uloženo id nejbližšího kontejneru
     """
     point = Point((sour_x, sour_y))
     features.append(Feature(geometry=point, properties={"addr:street": f"{adresa_prozapis_ulice}", 
         "addr:housenumber": f"{adresa_prozapis_cislo}", "kontejner": f"{kontejner_id}"})) #Přidání adresního místa s ID do seznamu features
-    return(features)
 
-def vypis_geojson(features):
+def zapis_geojson(features):
     """Zapíše data do souboru adresy_kontejnery.geojson
         Parameters:
                     features: Seznam určený k vypsání do výstupního souboru formátu .geojson, ve kterém je ke každé adrese uloženo id nejbližšího kontejneru
@@ -155,16 +149,17 @@ def vypis_geojson(features):
         dump(feature_collection, f, ensure_ascii=False, indent=4) 
     print("Informace o nejbližším kontejneru ke každě adrese je uložena v nově vytvořeném souboru 'adresy_kontejnery.geojson'.")
 
+wgs2jtsk = Transformer.from_crs(4326, 5514, always_xy = True)        #Převedení souřadnic z WGS84 do s-jtsk pomocí nástroje Transformer z knihovny pyproj
 features = []
 
-data_adresy = otevri_data("adresy.geojson")
-data_kontejnery = otevri_data("kontejnery.geojson")
+data_adresy = otevri_data("adresy_test.geojson")
+data_kontejnery = otevri_data("kontejnery_test.geojson")
 print(f"Detekováno {len(data_adresy)} adresních bodů.")
 print(f"Detekováno {len(data_kontejnery)} lokalit kontejnerů na tříděný odpad.")
 print("Program nyní kontroluje data a počítá výsledky.")
 
 data_volne_kontejnery, data_privatni_kontejnery = roztrid_kontejnery(data_kontejnery)
-features, data_adresy_s, data_adresy_bez = roztrid_adresy(features, data_adresy, data_privatni_kontejnery)
+data_adresy_s, data_adresy_bez = roztrid_adresy(data_adresy, data_privatni_kontejnery)
 
 pocet_adres_s = len(data_adresy_s)
 pocet_adres_bez = len(data_adresy_bez)
@@ -178,7 +173,7 @@ maximalni_z_minimalnich = 0
 for i in range(pocet_adres_bez):        #Počet opakování dán počtem adres bez privátního kontejneru
     try:
         adresa = data_adresy_bez[i]         #Výběr i-té adresy z dat
-        nove_sour = prevod_wgs2jtsk(*adresa["geometry"]["coordinates"]) #Převedení souřadnic do s-jtsk
+        nove_sour = prevod_wgs2jtsk(*adresa["geometry"]["coordinates"], wgs2jtsk) #Převedení souřadnic do s-jtsk
         adresa["geometry"]["coordinates"] = nove_sour   #Nahrazení předchozích souřadnic novými
         vzd = 0
         minimalni = 0
@@ -210,7 +205,7 @@ for i in range(pocet_adres_bez):        #Počet opakování dán počtem adres b
             exit()
         maximalni_info = {"ulice_max":adresa["properties"]["addr:street"], "cislo_max":adresa["properties"]["addr:housenumber"], 
             "hodnota_max": round(maximalni_z_minimalnich)} #Uložení informací o nejvyšší z nejnižších vzdáleností, aby mohly být následně vypsány
-    features = priprav_do_geojsonu(features, adresa["geometry"]["coordinates"][0], adresa["geometry"]["coordinates"][1], minimalni_info["ulice_min"], 
+    priprav_do_geojsonu(features, adresa["geometry"]["coordinates"][0], adresa["geometry"]["coordinates"][1], minimalni_info["ulice_min"], 
         minimalni_info["cislo_min"], minimalni_info["kontejner_min"]) #Uložení do seznamu k vypsání do nového geojson souboru s informacemi o adrese a id nejbližšího kontejneru
     seznam_minimalnich.append(minimalni)    #Přidání minimální vzdálenosti ke kontejneru pro danou adresu do seznamu takových vzdáleností
     soucet_minimalnich += minimalni         #Přištění této vzdálenosti k předchozím takovýmto vzdálenostem
@@ -230,4 +225,4 @@ print(f"Průměrná vzdálenost ke kontejneru je: {round(soucet_minimalnich/len(
 print(f"Medián vzdáleností ke kontejneru je: {med} m.")
 print(f"Největší vzdálenost ke kontejneru je z adresy {maximalni_info['ulice_max']} {maximalni_info['cislo_max']} a to {maximalni_info['hodnota_max']} m.")
 
-vypis_geojson(features) #Funkce vytvoří nový soubor a zapíše do něj informace o id nejbližšího kontejneru ke každé adrese
+zapis_geojson(features) #Funkce vytvoří nový soubor a zapíše do něj informace o id nejbližšího kontejneru ke každé adrese
